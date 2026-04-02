@@ -1,0 +1,15 @@
+/home/maxym/Документи/BestHackathon/Code/ParserTest/ParserTest/obj/Debug/net10.0/ParserTest.GeneratedMSBuildEditorConfig.editorconfig
+/home/maxym/Документи/BestHackathon/Code/ParserTest/ParserTest/obj/Debug/net10.0/ParserTest.AssemblyInfoInputs.cache
+/home/maxym/Документи/BestHackathon/Code/ParserTest/ParserTest/obj/Debug/net10.0/ParserTest.AssemblyInfo.cs
+/home/maxym/Документи/BestHackathon/Code/ParserTest/ParserTest/obj/Debug/net10.0/ParserTest.csproj.CoreCompileInputs.cache
+/home/maxym/Документи/BestHackathon/Code/ParserTest/ParserTest/obj/Debug/net10.0/ParserTest.sourcelink.json
+/home/maxym/Документи/BestHackathon/Code/ParserTest/ParserTest/bin/Debug/net10.0/ParserTest
+/home/maxym/Документи/BestHackathon/Code/ParserTest/ParserTest/bin/Debug/net10.0/ParserTest.deps.json
+/home/maxym/Документи/BestHackathon/Code/ParserTest/ParserTest/bin/Debug/net10.0/ParserTest.runtimeconfig.json
+/home/maxym/Документи/BestHackathon/Code/ParserTest/ParserTest/bin/Debug/net10.0/ParserTest.dll
+/home/maxym/Документи/BestHackathon/Code/ParserTest/ParserTest/bin/Debug/net10.0/ParserTest.pdb
+/home/maxym/Документи/BestHackathon/Code/ParserTest/ParserTest/obj/Debug/net10.0/ParserTest.dll
+/home/maxym/Документи/BestHackathon/Code/ParserTest/ParserTest/obj/Debug/net10.0/refint/ParserTest.dll
+/home/maxym/Документи/BestHackathon/Code/ParserTest/ParserTest/obj/Debug/net10.0/ParserTest.pdb
+/home/maxym/Документи/BestHackathon/Code/ParserTest/ParserTest/obj/Debug/net10.0/ParserTest.genruntimeconfig.cache
+/home/maxym/Документи/BestHackathon/Code/ParserTest/ParserTest/obj/Debug/net10.0/ref/ParserTest.dll
