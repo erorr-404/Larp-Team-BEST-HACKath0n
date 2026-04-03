@@ -1,9 +1,9 @@
-public readonly record struct GpsRecord(float time, float lat, float lng, float alt, float spd, int nstats)
+public readonly record struct GpsRecord(double time, double lat, double lng, float alt, float spd, int nstats)
 {
     // Це структурпа для збереження запису про GPS-дані
-    readonly float Time = time;
-    readonly float Latitude = lat;
-    readonly float Longitude = lng;
+    readonly double Time = time;
+    readonly double Latitude = lat;
+    readonly double Longitude = lng;
     readonly float Altitude = alt;
     readonly float Speed = spd;
     readonly int NStats = nstats;
@@ -15,9 +15,9 @@ public readonly record struct GpsRecord(float time, float lat, float lng, float 
 }
 
 
-public readonly record struct ImuRecord(float time, float gyrX, float gyrY, float gyrZ, float accX, float accY, float accZ)
+public readonly record struct ImuRecord(double time, float gyrX, float gyrY, float gyrZ, float accX, float accY, float accZ)
 {
-    readonly float Time = time;
+    readonly double Time = time;
 
     // швидкість обертання навколо осей X, Y та Z, rad/s
     readonly float GyrX = gyrX;
@@ -36,13 +36,13 @@ public readonly record struct ImuRecord(float time, float gyrX, float gyrY, floa
 }
 
 
-public readonly record struct BaroRecord(float time, float alt, float temp, float press, float crt)
+public readonly record struct BaroRecord(double time, float alt, float temp, float press, float crt)
 {
-    readonly float Time = time;
+    readonly double Time = time;
     readonly float Alt = alt;
     readonly float Temp = temp;
-    readonly float Press = press;
-    readonly float CRt = crt;
+    readonly float Press = press; // атмосферний тиск, hPa
+    readonly float CRt = crt; // climb rate, швидкість набору висоти, m/s
 
     public override string ToString()
     {

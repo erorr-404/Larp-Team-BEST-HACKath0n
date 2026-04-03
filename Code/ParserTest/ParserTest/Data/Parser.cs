@@ -72,12 +72,13 @@ public class BinaryParser(string fileName)
     }
 
     // ця функція пробує перетворити рядки на gps структуру
+    // дані із GPS краще зберігати у double для більшої точності
     private static GpsRecord? TryMapGps(DFItem item)
     {
-        if (!float.TryParse(item["Lat"], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var lat))
+        if (!double.TryParse(item["Lat"], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var lat))
             return null;
 
-        if (!float.TryParse(item["Lng"], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var lng))
+        if (!double.TryParse(item["Lng"], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var lng))
             return null;
 
         if (!float.TryParse(item["Alt"], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var alt))
@@ -90,7 +91,7 @@ public class BinaryParser(string fileName)
             return null;
 
         return new GpsRecord(
-            (float)item.timems,
+            (double)item.timems,
             lat,
             lng,
             alt,
@@ -99,6 +100,7 @@ public class BinaryParser(string fileName)
     }
 
     // ця функція пробує перетворити рядки на imu структуру
+    // дані із IMU можна зберігати у float, оскільки це невеликі числа
     private static ImuRecord? TryMapImu(DFItem item) 
     {
         if (!float.TryParse(item["GyrX"], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var gyrX))
@@ -130,6 +132,7 @@ public class BinaryParser(string fileName)
     }
 
     // ця функція пробує перетворити рядки на baro структуру
+    // дані із baro теж ліпше зберігати у float
     private static BaroRecord? TryMapBaro(DFItem item)
     {
         if (!float.TryParse(item["Alt"], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var alt))
