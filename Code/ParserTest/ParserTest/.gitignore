@@ -3,6 +3,8 @@
 ##
 ## Get latest from `dotnet new gitignore`
 
+.directory
+
 # dotenv files
 .env
 
@@ -97,7 +99,6 @@ StyleCopReport.xml
 *.tmp
 *.tmp_proj
 *_wpftmp.csproj
-*.log
 *.tlog
 *.vspscc
 *.vssscc

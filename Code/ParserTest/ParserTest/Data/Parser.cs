@@ -2,8 +2,11 @@
 using MissionPlanner.Utilities;
 using static MissionPlanner.Utilities.DFLog;
 
-public class BinariesParser(string fileName)
+public class BinaryParser(string fileName)
 {
+    // цей клас відповідає за парсинг бінарника та збереження результату у 3 масивах
+    // він є посередником між сирими даними та структурованими даними, які можна використовувати для аналізу
+
     private readonly string _fileName = fileName;
 
     public GpsRecord[] GpsRecords { get; private set; } = System.Array.Empty<GpsRecord>();
