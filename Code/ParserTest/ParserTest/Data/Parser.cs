@@ -2,19 +2,28 @@
 using MissionPlanner.Utilities;
 using static MissionPlanner.Utilities.DFLog;
 
+
+/// <summary>
+/// Клас для парсингу бінарного файлу та збереження результату у 3 масивах: GpsRecords, ImuRecords та BaroRecords.
+/// Цей клас є посередником між сирими даними та структурованими даними, які можна використовувати для аналізу.
+/// Він відповідає за зчитування даних з бінарного файлу, конвертацію їх у відповідні структури та збереження результату у відповідних масивах.
+/// </summary>
+/// <param name="fileName"> Шилях до бінарного файлу </param>
 public class BinaryParser(string fileName)
 {
-    // цей клас відповідає за парсинг бінарника та збереження результату у 3 масивах
-    // він є посередником між сирими даними та структурованими даними, які можна використовувати для аналізу
-
     private readonly string _fileName = fileName;
 
     public GpsRecord[] GpsRecords { get; private set; } = System.Array.Empty<GpsRecord>();
     public ImuRecord[] ImuRecords { get; private set; } = System.Array.Empty<ImuRecord>();
     public BaroRecord[] BaroRecords { get; private set; } = System.Array.Empty<BaroRecord>();
 
-    // завантажуємо дані із бінарника у 3 масиви
+
+    /// <summary>
+    /// Парсить бінарний файл та зберігає результат у 3 масивах: GpsRecords, ImuRecords та BaroRecords.
+    /// </summary>
+    /// <returns> Повертає true, якщо парсинг успішний, інакше false. </returns>
     public bool Parse()
+    // TODO: повертати false у випадку помилки
     {
         // парсимо бінарник
         using DFLogBuffer logdata = new(_fileName);
@@ -71,8 +80,12 @@ public class BinaryParser(string fileName)
         return true;
     }
 
-    // ця функція пробує перетворити рядки на gps структуру
-    // дані із GPS краще зберігати у double для більшої точності
+
+    /// <summary>
+    /// Ця функція пробує перетворити рядки на gps структуру. Якщо конвертація не вдається, повертає null.
+    /// </summary>
+    /// <param name="item"> Елемент даних для конвертації </param>
+    /// <returns> Об'єкт GpsRecord, якщо конвертація успішна, інакше null </returns>
     private static GpsRecord? TryMapGps(DFItem item)
     {
         if (!double.TryParse(item["Lat"], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var lat))
@@ -99,8 +112,12 @@ public class BinaryParser(string fileName)
             nstats);
     }
 
-    // ця функція пробує перетворити рядки на imu структуру
-    // дані із IMU можна зберігати у float, оскільки це невеликі числа
+
+    /// <summary>
+    /// Ця функція пробує перетворити рядки на imu структуру. Якщо конвертація не вдається, повертає null.
+    /// </summary>
+    /// <param name="item"> Елемент даних для конвертації </param>
+    /// <returns> Об'єкт ImuRecord, якщо конвертація успішна, інакше null </returns>
     private static ImuRecord? TryMapImu(DFItem item) 
     {
         if (!float.TryParse(item["GyrX"], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var gyrX))
@@ -130,9 +147,13 @@ public class BinaryParser(string fileName)
             accY,
             accZ);
     }
+    
 
-    // ця функція пробує перетворити рядки на baro структуру
-    // дані із baro теж ліпше зберігати у float
+    /// <summary>
+    /// Ця функція пробує перетворити рядки на baro структуру. Якщо конвертація не вдається, повертає null.
+    /// </summary>
+    /// <param name="item"> Елемент даних для конвертації </param>
+    /// <returns> Об'єкт BaroRecord, якщо конвертація успішна, інакше null </returns>
     private static BaroRecord? TryMapBaro(DFItem item)
     {
         if (!float.TryParse(item["Alt"], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var alt))

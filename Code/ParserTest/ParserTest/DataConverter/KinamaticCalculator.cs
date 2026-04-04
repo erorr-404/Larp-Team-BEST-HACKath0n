@@ -3,6 +3,9 @@
 using System.Numerics;
 using System.Runtime.CompilerServices;
 
+/// <summary>
+/// Клас для конвертації gps, imu та baro записів у масив kinematicPoints, який містить координати, швидкість та прискорення відносно стартової точки.
+/// </summary>
 public class KinematicCalculator
 {
     public KinematicPoint[] kinematicPoints = Array.Empty<KinematicPoint>();
@@ -13,6 +16,12 @@ public class KinematicCalculator
     // між двома точками для більної плавності
     private PositionRecord[] _positionRecords = Array.Empty<PositionRecord>();
 
+    /// <summary>
+    /// Обчислює кінематичні точки з заданих записів.
+    /// </summary>
+    /// <param name="gpsRecords"> Масив записів GPS </param>
+    /// <param name="imuRecords"> Масив записів IMU </param>
+    /// <param name="baroRecords"> Масив записів BARO </param>
     public void CalculateKinematicPointsFromRecords(GpsRecord[] gpsRecords, ImuRecord[] imuRecords, BaroRecord[] baroRecords)
     {
         // використовуємо дані з IMU, оскільки вони мають майбільшу частоту запису
@@ -33,8 +42,15 @@ public class KinematicCalculator
     }
 
     private int _positionCursor; // курсор для швидкого послідовного доступу
-    [MethodImpl(MethodImplOptions.AggressiveInlining)] // TODO: перевірити чи дійсно це прискорює виконання функції
+    
+    /// <summary>
+    /// Знаходить найближчий за даним часом до реальності запис про позицію за допомогою лінійної інтерполяції.
+    /// </summary>
+    /// <param name="time"> Час, для якого потрібно знайти позицію </param>
+    /// <returns> Позиція у вигляді PositionRecord, яка відповідає заданому часу </returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private PositionRecord GetClosestPositionRecord(double time)
+    // TODO: перевірити чи дійсно це прискорює виконання функції
     {
         var records = _positionRecords;
         int len = records.Length;
@@ -104,6 +120,10 @@ public class KinematicCalculator
     }
 
 
+    /// <summary>
+    /// Обчислює масив із координатами відносно стартової точки на основі gps записів.
+    /// </summary>
+    /// <param name="gpsRecords"> Масив записів GPS </param>
     private void CalculatePositionRecords(GpsRecord[] gpsRecords)
     {
         var positionRecordsList = new List<PositionRecord>();
@@ -134,6 +154,11 @@ public class KinematicCalculator
     }
 
 
+    /// <summary>
+    /// Структура для зберігання запису про позицію з часом та координатами.
+    /// </summary>
+    /// <param name="timestamp"> Час запису </param>
+    /// <param name="pos"> Координати позиції </param>
     private readonly struct PositionRecord(double timestamp, Vector3 pos)
     {
         public readonly double Timestamp = timestamp;

@@ -63,7 +63,7 @@ public static class Utils
 
         return new Vector3(e, n, u); // Повертає (East, North, Up)
 }
-    public static void Main()
+    public static void Example()
     {   
         // double startLat, startLng, startAlt, currentLat, currentLng, currentAltFromBaro = (5d, 5d, 5d, 5d, 5d, 5d);
         double startLat = -35.363266d;
@@ -79,15 +79,6 @@ public static class Utils
         Console.WriteLine($"x = {localPos.X}, y = {localPos.Y}, z = {localPos.Z}");
     }
 }
-
-
-
-
-
-
-
-
-
 
 
 /* const float SeaLevelPressure = 1013.25f;
