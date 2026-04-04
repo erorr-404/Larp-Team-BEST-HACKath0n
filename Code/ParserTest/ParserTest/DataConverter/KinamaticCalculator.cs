@@ -33,24 +33,99 @@ public class KinematicCalculator
         CalculatePositionRecords(gpsRecords);
 
         PositionRecord currentPosition;
+        ImuRecord currentImu;
 
+        // Шо тут робиться:
+        // ми ітеруємось через часові мітки, із imu записів
+        // оскільки частота отримання даних gps набагато рідша за imu
+        // то ми значення, яке найімовірніше було в той момент
+        // за допомогою лінійної інтерполяції: https://uk.wikipedia.org/wiki/%D0%9B%D1%96%D0%BD%D1%96%D0%B9%D0%BD%D0%B0_%D1%96%D0%BD%D1%82%D0%B5%D1%80%D0%BF%D0%BE%D0%BB%D1%8F%D1%86%D1%96%D1%8F
+        // дані з imu беремо найближчі до даної позначки часу із масива imuRecords
+        // найімовірніше це будуть прямо точні дані, бо початок, кінець та крок часових позначок
+        // ми беремо саме з IMU
         for (double time = startTime; time <= endTime; time += timeStep)
         {
             currentPosition = GetClosestPositionRecord(time); // отримуємо найближче значення
-            // TODO: продовжити тут
+            currentImu = GetClosestImuRecord(imuRecords, time); // отримуємо найближчий запис IMU
+            // TODO: float linearSpeed = ...;
+
+
         }
+    }
+
+    private int _imuRecordsCursor = 0; // курсор для швидкого послідовного доступу
+
+    /// <summary> Ця функція повертає найближчий запис IMU до заданого часу. </summary>
+    /// <param name="imuRecords"> Масив записів IMU </param>
+    /// <param name="time"> Час, для якого потрібно знайти найближчий запис IMU </param>
+    /// <returns> Запис IMU, який найближче до заданого часу </returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private ImuRecord GetClosestImuRecord(ImuRecord[] imuRecords, double time) 
+    // TODO: перевірити чи [MethodImpl(MethodImplOptions.AggressiveInlining)] дійсно це прискорює виконання функції
+    {
+        int len = imuRecords.Length;
+
+        // базова перевірка на дурачка
+        if (len == 0) return default;
+        if (len == 1) return imuRecords[0];
+
+        int last = len - 1;
+
+        if (time <= imuRecords[0].time)
+        {
+            _imuRecordsCursor = 0;
+            return imuRecords[0];
+        }
+
+        if (time >= imuRecords[last].time)
+        {
+            _imuRecordsCursor = last;
+            return imuRecords[last];
+        }
+
+        int i = _imuRecordsCursor;
+        if ((uint)i >= (uint)last) i = 0;
+
+        if (time >= imuRecords[i].time)
+        {
+            while (i + 1 < len && imuRecords[i + 1].time <= time)
+            i++;
+        }
+        else
+        {
+            int lo = 0;
+            int hi = last;
+
+            while (lo + 1 < hi)
+            {
+                int mid = lo + ((hi - lo) >> 1);
+                if (imuRecords[mid].time <= time) lo = mid;
+                else hi = mid;
+            }
+
+            i = lo;
+        }
+
+        int j = i + 1;
+        double dtLeft = time - imuRecords[i].time;
+        double dtRight = imuRecords[j].time - time;
+
+        int nearest = (dtRight < dtLeft) ? j : i;
+        _imuRecordsCursor = nearest;
+
+        return imuRecords[nearest];
     }
 
     private int _positionCursor; // курсор для швидкого послідовного доступу
     
     /// <summary>
-    /// Знаходить найближчий за даним часом до реальності запис про позицію за допомогою лінійної інтерполяції.
+    /// Обчислює найближчий за даним часом до реальності запис про позицію за допомогою лінійної інтерполяції.
     /// </summary>
     /// <param name="time"> Час, для якого потрібно знайти позицію </param>
     /// <returns> Позиція у вигляді PositionRecord, яка відповідає заданому часу </returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private PositionRecord GetClosestPositionRecord(double time)
-    // TODO: перевірити чи дійсно це прискорює виконання функції
+    // TODO: перевірити чи [MethodImpl(MethodImplOptions.AggressiveInlining)] дійсно це прискорює виконання функції
     {
         var records = _positionRecords;
         int len = records.Length;
@@ -116,7 +191,11 @@ public class KinematicCalculator
         if (t >= 1f) return b;
 
         Vector3 interpolated = Vector3.Lerp(a.Position, b.Position, t);
-        return new PositionRecord(time, interpolated);
+        double interpolatedLongitude = a.Longitude + (b.Longitude - a.Longitude) * t;
+        double interpolatedLatitude = a.Latitude + (b.Latitude - a.Latitude) * t;
+        float interpolatedAltitude = a.Altitude + (b.Altitude - a.Altitude) * t;
+
+        return new PositionRecord(time, interpolated, interpolatedLongitude, interpolatedLatitude, interpolatedAltitude);
     }
 
 
@@ -134,7 +213,8 @@ public class KinematicCalculator
 
         Vector3d startEcef = Utils.LlaToEcef(startLat, startLng, startAlt);
         
-        double currentLat, currentLng, currentAlt;
+        double currentLat, currentLng;
+        float currentAlt;
         Vector3d currentEcef;
         Vector3 localPos;
 
@@ -144,10 +224,10 @@ public class KinematicCalculator
             currentLng = record.lng;
             currentAlt = record.alt; // FIXME: брати висоту не від gps, а від барометра
 
-            currentEcef = Utils.LlaToEcef(currentLat, currentLng, currentAlt);
+            currentEcef = Utils.LlaToEcef(currentLat, currentLng, (double)currentAlt);
             localPos = Utils.EcefToEnu(currentEcef, startEcef, startLat, startLng);
 
-            positionRecordsList.Add(new PositionRecord(record.time, localPos));
+            positionRecordsList.Add(new PositionRecord(record.time, localPos, currentLng, currentLat, currentAlt));
         }
 
         _positionRecords = positionRecordsList.ToArray();
@@ -159,9 +239,15 @@ public class KinematicCalculator
     /// </summary>
     /// <param name="timestamp"> Час запису </param>
     /// <param name="pos"> Координати позиції </param>
-    private readonly struct PositionRecord(double timestamp, Vector3 pos)
+    /// <param name="lng"> Довгота </param>
+    /// <param name="pos"> Широта </param>
+    private readonly struct PositionRecord(double timestamp, Vector3 pos, double lng, double lat, float alt)
     {
         public readonly double Timestamp = timestamp;
         public readonly Vector3 Position = pos;
+
+        public readonly double Longitude = lng;
+        public readonly double Latitude = lat;
+        public readonly float Altitude = alt;
     }
 }

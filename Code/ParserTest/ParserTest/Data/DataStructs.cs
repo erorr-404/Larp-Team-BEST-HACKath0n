@@ -49,6 +49,12 @@ public readonly record struct ImuRecord(double time, float gyrX, float gyrY, flo
     readonly float AccY = accY;
     readonly float AccZ = accZ;
 
+    /// <summary>
+    /// Обчислює величину лінійного прискорення на основі компонентів AccX, AccY та AccZ за формулою: sqrt(AccX^2 + AccY^2 + AccZ^2).
+    /// </summary>
+    /// <returns> Величина лінійного прискорення, m/s² </returns>
+    public float GetLinearAccelerationMagnitude => MathF.Sqrt(AccX * AccX + AccY * AccY + AccZ * AccZ);
+
     public override string ToString()
     {
         return $"Time: {Time}, GyrX: {GyrX}, GyrY: {GyrY}, GyrZ: {GyrZ}, AccX: {AccX}, AccY: {AccY}, AccZ: {AccZ}";
