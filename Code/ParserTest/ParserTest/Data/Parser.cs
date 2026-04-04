@@ -1,6 +1,8 @@
 
 using MissionPlanner.Utilities;
 using static MissionPlanner.Utilities.DFLog;
+using System.Collections.Generic;
+using System;
 
 
 /// <summary>
@@ -9,9 +11,15 @@ using static MissionPlanner.Utilities.DFLog;
 /// Він відповідає за зчитування даних з бінарного файлу, конвертацію їх у відповідні структури та збереження результату у відповідних масивах.
 /// </summary>
 /// <param name="fileName"> Шилях до бінарного файлу </param>
-public class BinaryParser(string fileName)
+public class BinaryParser
 {
-    private readonly string _fileName = fileName;
+
+    public BinaryParser(string fileName)
+    {
+        _fileName = fileName;
+    }
+
+    private readonly string _fileName;
 
     public GpsRecord[] GpsRecords { get; private set; } = System.Array.Empty<GpsRecord>();
     public ImuRecord[] ImuRecords { get; private set; } = System.Array.Empty<ImuRecord>();
@@ -26,7 +34,7 @@ public class BinaryParser(string fileName)
     // TODO: повертати false у випадку помилки
     {
         // парсимо бінарник
-        using DFLogBuffer logdata = new(_fileName);
+        using DFLogBuffer logdata = new DFLogBuffer(_fileName);
 
         // зберігаємо проміжний результат
         var gps = new List<GpsRecord>();

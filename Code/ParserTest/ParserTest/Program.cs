@@ -42,10 +42,10 @@ public class KinematicDataProcessor
 
     public static KinematicPoint[] GetKinematicPointsFromBinaryFile(string fileName)
     {
-        BinaryParser parser = new(fileName);
+        BinaryParser parser = new BinaryParser(fileName);
         parser.Parse();
 
-        KinematicCalculator calculator = new();
+        KinematicCalculator calculator = new KinematicCalculator();
         calculator.CalculateKinematicPointsFromRecords(parser.GpsRecords, parser.ImuRecords, parser.BaroRecords);
 
         return calculator.kinematicPoints;

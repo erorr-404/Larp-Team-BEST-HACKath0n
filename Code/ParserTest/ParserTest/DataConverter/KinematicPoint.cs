@@ -1,13 +1,12 @@
 
 using System.Numerics;
-using System.Reflection.Metadata.Ecma335;
 
 
 /// <summary>
 /// Структура для зберігання кінематичних даних, включаючи час, GPS-координати, позицію у Декартових координатах, швидкість, прискорення, а також орієнтацію та кутову швидкість.
 /// Ця структура є результатом конвертації сирих даних GPS, IMU та BARO у більш зручний формат для аналізу та візуалізації.
 /// </summary>
-public record struct KinematicPoint
+public struct KinematicPoint
 {
     /// <summary> Час у мікросекундах відносно старту. </summary>
     public  double Timestamp;

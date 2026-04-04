@@ -1,26 +1,31 @@
-
+using System.Collections.Generic;
+using System;
 
 /// <summary>
 /// Ця структура використовуєься для зберігання запису про GPS-дані, включаючи час, широту, довготу, висоту, швидкість та кількість супутників.
 /// </summary>
-/// <param name="time"> Час у мікросекундах відносно початку роботи польотника </param>
-/// <param name="lat"> Широта, градуси </param>
-/// <param name="lng"> Довгота, градуси </param>
-/// <param name="alt"> Висота, метри </param>
-/// <param name="spd"> Швидкість, м/с </param>
-/// <param name="nstats"> Кількість супутників </param>
-public readonly record struct GpsRecord(double time, double lat, double lng, float alt, float spd, int nstats)
+public readonly struct GpsRecord
 {
-    readonly double Time = time;
-    readonly double Latitude = lat;
-    readonly double Longitude = lng;
-    readonly float Altitude = alt;
-    readonly float Speed = spd;
-    readonly int NStats = nstats;
+    public readonly double time;
+    public readonly double lat;
+    public readonly double lng;
+    public readonly float alt;
+    public readonly float spd;
+    public readonly int nstats;
+
+    public GpsRecord(double time, double lat, double lng, float alt, float spd, int nstats)
+    {
+        this.time = time;
+        this.lat = lat;
+        this.lng = lng;
+        this.alt = alt;
+        this.spd = spd;
+        this.nstats = nstats;
+    }
 
     public override string ToString()
     {
-        return $"Time: {Time}, Lat: {Latitude}, Lng: {Longitude}, Alt: {Altitude}, Spd: {Speed}, NSats: {NStats}";
+        return $"Time: {time}, Lat: {lat}, Lng: {lng}, Alt: {alt}, Spd: {spd}, NSats: {nstats}";
     }
 }
 
@@ -28,36 +33,40 @@ public readonly record struct GpsRecord(double time, double lat, double lng, flo
 /// <summary>
 /// Ця структура використовується для зберігання запису про IMU-дані, включаючи час, швидкість обертання навколо осей X, Y та Z, а також лінійне прискорення вздовж осей X, Y та Z.
 /// </summary>
-/// <param name="time"> Час у мікросекундах відносно початку роботи польотника </param>
-/// <param name="gyrX"> Швидкість обертання навколо осі X, rad/s </param>
-/// <param name="gyrY"> Швидкість обертання навколо осі Y, rad/s </param>
-/// <param name="gyrZ"> Швидкість обертання навколо осі Z, rad/s </param>
-/// <param name="accX"> Лінійне прискорення вздовж осі X, m/s/s </param>
-/// <param name="accY"> Лінійне прискорення вздовж осі Y, m/s/s </param>
-/// <param name="accZ"> Лінійне прискорення вздовж осі Z, m/s/s </param>
-public readonly record struct ImuRecord(double time, float gyrX, float gyrY, float gyrZ, float accX, float accY, float accZ)
+public readonly struct ImuRecord
 {
-    readonly double Time = time;
+    public readonly double time;
 
     // швидкість обертання навколо осей X, Y та Z, rad/s
-    readonly float GyrX = gyrX;
-    readonly float GyrY = gyrY;
-    readonly float GyrZ = gyrZ;
+    public readonly float gyrX;
+    public readonly float gyrY;
+    public readonly float gyrZ;
 
     // лінійне прискорення вздовж осей X, Y та Z, m/s/s
-    readonly float AccX = accX;
-    readonly float AccY = accY;
-    readonly float AccZ = accZ;
+    public readonly float accX;
+    public readonly float accY;
+    public readonly float accZ;
+
+    public ImuRecord(double time, float gyrX, float gyrY, float gyrZ, float accX, float accY, float accZ)
+    {
+        this.time = time;
+        this.gyrX = gyrX;
+        this.gyrY = gyrY;
+        this.gyrZ = gyrZ;
+        this.accX = accX;
+        this.accY = accY;
+        this.accZ = accZ;
+    }
 
     /// <summary>
-    /// Обчислює величину лінійного прискорення на основі компонентів AccX, AccY та AccZ за формулою: sqrt(AccX^2 + AccY^2 + AccZ^2).
+    /// Обчислює величину лінійного прискорення на основі компонентів accX, accY та accZ за формулою: sqrt(accX^2 + accY^2 + accZ^2).
     /// </summary>
     /// <returns> Величина лінійного прискорення, m/s² </returns>
-    public float GetLinearAccelerationMagnitude => MathF.Sqrt(AccX * AccX + AccY * AccY + AccZ * AccZ);
+    public float GetLinearAccelerationMagnitude => MathF.Sqrt(accX * accX + accY * accY + accZ * accZ);
 
     public override string ToString()
     {
-        return $"Time: {Time}, GyrX: {GyrX}, GyrY: {GyrY}, GyrZ: {GyrZ}, AccX: {AccX}, AccY: {AccY}, AccZ: {AccZ}";
+        return $"Time: {time}, GyrX: {gyrX}, GyrY: {gyrY}, GyrZ: {gyrZ}, AccX: {accX}, AccY: {accY}, AccZ: {accZ}";
     }
 }
 
@@ -65,22 +74,26 @@ public readonly record struct ImuRecord(double time, float gyrX, float gyrY, flo
 /// <summary>
 /// Ця структура використовується для зберігання запису про BARO-дані, включаючи час, висоту, температуру, тиск та швидкість набору висоти.
 /// </summary>
-/// <param name="time"> Час у мікросекундах відносно початку роботи польотника </param>
-/// <param name="alt"> Висота, метри </param>
-/// <param name="temp"> Температура, градуси Цельсія </param>
-/// <param name="press"> Атмосферний тиск, hPa </param>
-/// <param name="crt"> Швидкість набору висоти, m/s </param>
-public readonly record struct BaroRecord(double time, float alt, float temp, float press, float crt)
+public readonly struct BaroRecord
 {
-    readonly double Time = time;
-    readonly float Alt = alt;
-    readonly float Temp = temp;
-    readonly float Press = press; // атмосферний тиск, hPa
-    readonly float CRt = crt; // climb rate, швидкість набору висоти, m/s
+    public readonly double time;
+    public readonly float alt;
+    public readonly float temp;
+    public readonly float press; // атмосферний тиск, hPa
+    public readonly float crt; // climb rate, швидкість набору висоти, m/s
+
+    public BaroRecord(double time, float alt, float temp, float press, float crt)
+    {
+        this.time = time;
+        this.alt = alt;
+        this.temp = temp;
+        this.press = press;
+        this.crt = crt;
+    }
 
     public override string ToString()
     {
-        return $"Time: {Time}, Alt: {Alt}, Temp: {Temp}, Press: {Press}, CRt: {CRt}";
+        return $"Time: {time}, Alt: {alt}, Temp: {temp}, Press: {press}, CRt: {crt}";
     }
 }
 

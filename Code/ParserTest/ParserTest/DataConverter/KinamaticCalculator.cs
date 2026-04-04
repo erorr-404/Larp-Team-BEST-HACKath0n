@@ -2,6 +2,8 @@
 
 using System.Numerics;
 using System.Runtime.CompilerServices;
+using System.Collections.Generic;
+using System;
 
 /// <summary>
 /// Клас для конвертації gps, imu та baro записів у масив kinematicPoints, який містить координати, швидкість та прискорення відносно стартової точки.
@@ -36,13 +38,13 @@ public class KinematicCalculator
         int capacity = (int)((endTime - startTime) / timeStep);
 
         System.Console.WriteLine(capacity);
-        List<KinematicPoint> kinematicPointsList = new(capacity);
+        List<KinematicPoint> kinematicPointsList = new List<KinematicPoint>(capacity);
         // обчислюємо масив із координатами відносно стартової точки
         CalculatePositionRecords(gpsRecords);
         
-        Vector3d velocityPrev = new(0, 0, 0);
-        Vector3d accPrev = new(0, 0, 0);
-        Vector3d angularVelocityPrev = new(0, 0, 0);
+        Vector3d velocityPrev = new Vector3d(0, 0, 0);
+        Vector3d accPrev = new Vector3d(0, 0, 0);
+        Vector3d angularVelocityPrev = new Vector3d(0, 0, 0);
         
 
         // Шо тут робиться:
@@ -67,7 +69,7 @@ public class KinematicCalculator
             Vector3d angularVelocity = new Vector3d(currentImu.gyrX, currentImu.gyrY, currentImu.gyrZ);
             Vector3d angularPosition = angularVelocityPrev + ((angularVelocity + angularVelocityPrev) / 2) * (timeStepSeconds);
 
-            KinematicPoint currentKinematicPoint = new();
+            KinematicPoint currentKinematicPoint = new KinematicPoint();
             currentKinematicPoint.Timestamp = time;
             currentKinematicPoint.Longitude = currentPosition.Longitude;
             currentKinematicPoint.Latitude = currentPosition.Latitude;
@@ -280,13 +282,22 @@ public class KinematicCalculator
     /// <param name="pos"> Координати позиції </param>
     /// <param name="lng"> Довгота </param>
     /// <param name="pos"> Широта </param>
-    private readonly struct PositionRecord(double timestamp, Vector3 pos, double lng, double lat, float alt)
+    private readonly struct PositionRecord
     {
-        public readonly double Timestamp = timestamp;
-        public readonly Vector3 Position = pos;
+        public readonly double Timestamp;
+        public readonly Vector3 Position;
 
-        public readonly double Longitude = lng;
-        public readonly double Latitude = lat;
-        public readonly float Altitude = alt;
+        public readonly double Longitude;
+        public readonly double Latitude;
+        public readonly float Altitude;
+
+        public PositionRecord(double timestamp, Vector3 pos, double lng, double lat, float alt)
+        {
+            Timestamp = timestamp;
+            Position = pos;
+            Longitude = lng;
+            Latitude = lat;
+            Altitude = alt;
+        }
     }
 }

@@ -3,6 +3,24 @@ using System.Runtime.InteropServices;
 
 namespace System
 {
+#if !NET5_0_OR_GREATER
+    [StructLayout(LayoutKind.Explicit)]
+    public readonly struct Half
+    {
+        [FieldOffset(0)]
+        internal readonly ushort _value;
+
+        internal Half(ushort bits)
+        {
+            _value = bits;
+        }
+
+        public static implicit operator Half(float value) => HalfHelper.SingleToHalf(value);
+        public static implicit operator float(Half value) => HalfHelper.HalfToSingle(value);
+        public static explicit operator ushort(Half value) => value._value;
+    }
+#endif
+
     /// <summary>
     /// Helper class for Half conversions and some low level operations.
     /// This class is internally used in the Half class.

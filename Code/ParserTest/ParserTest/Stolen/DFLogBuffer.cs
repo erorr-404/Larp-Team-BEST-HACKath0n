@@ -4,7 +4,11 @@ using System.IO.Compression;
 using System.Runtime.Serialization.Formatters.Binary;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Text.Json;
+using System.Collections.Generic;
+using System;
+using System.IO;
+using System.Linq;
+// using System.Text.Json;
 
 namespace MissionPlanner.Utilities
 {
@@ -88,7 +92,8 @@ namespace MissionPlanner.Utilities
 
         void setlinecount()
         {
-            if (!LoadCache())
+            // if (!LoadCache())
+            if (!false)
             {
                 byte[] buffer = new byte[1024 * 1024];
 
@@ -193,7 +198,7 @@ namespace MissionPlanner.Utilities
                     }
                 }
 
-                SaveCache();
+                // SaveCache();
             }
 
 
@@ -348,58 +353,58 @@ namespace MissionPlanner.Utilities
             }
         }
 
-        private void SaveCache()
-        {
-            // save cache if file is over 300mb
-            if (basestream.Length < 1024 * 1024 * 300)
-                return;
+        // private void SaveCache()
+        // {
+        //     // save cache if file is over 300mb
+        //     if (basestream.Length < 1024 * 1024 * 300)
+        //         return;
 
-            var data = new cache
-            {
-                messageindex = messageindex,
-                messageindexline = messageindexline,
-                linestartoffset = linestartoffset,
-                lineCount = _count
-            };
+        //     var data = new cache
+        //     {
+        //         messageindex = messageindex,
+        //         messageindexline = messageindexline,
+        //         linestartoffset = linestartoffset,
+        //         lineCount = _count
+        //     };
 
-            // File.Create avoids stale trailing bytes from previous writes
-            using var file = File.Create(CachePath);
-            using var gs = new GZipStream(file, CompressionMode.Compress);
-            JsonSerializer.Serialize(gs, data);
-        }
+        //     // File.Create avoids stale trailing bytes from previous writes
+        //     using var file = File.Create(CachePath);
+        //     using var gs = new GZipStream(file, CompressionMode.Compress);
+        //     // JsonSerializer.Serialize(gs, data);
+        // }
 
 
-        private bool LoadCache()
-        {
-            if (!File.Exists(CachePath))
-                return false;
+        // private bool LoadCache()
+        // {
+        //     if (!File.Exists(CachePath))
+        //         return false;
 
-            try
-            {
-                using var file = File.OpenRead(CachePath);
-                using var gs = new GZipStream(file, CompressionMode.Decompress);
-                var data = JsonSerializer.Deserialize<cache>(gs);
+        //     try
+        //     {
+        //         using var file = File.OpenRead(CachePath);
+        //         using var gs = new GZipStream(file, CompressionMode.Decompress);
+        //         // var data = JsonSerializer.Deserialize<cache>(gs);
 
-                if (data.messageindex == null ||
-                    data.messageindexline == null ||
-                    data.linestartoffset == null)
-                    return false;
+        //         if (data.messageindex == null ||
+        //             data.messageindexline == null ||
+        //             data.linestartoffset == null)
+        //             return false;
 
-                messageindex = data.messageindex;
-                messageindexline = data.messageindexline;
-                linestartoffset = data.linestartoffset;
-                _count = data.lineCount;
+        //         messageindex = data.messageindex;
+        //         messageindexline = data.messageindexline;
+        //         linestartoffset = data.linestartoffset;
+        //         _count = data.lineCount;
 
-                // build fmt line database to pre seed the FMT message
-                messageindexline[128].ForEach(a => dflog.FMTLine(this[(int)a]));
-                return true;
-            }
-            catch
-            {
-                // corrupt/old cache format -> rebuild cache
-                return false;
-            }
-        }
+        //         // build fmt line database to pre seed the FMT message
+        //         messageindexline[128].ForEach(a => dflog.FMTLine(this[(int)a]));
+        //         return true;
+        //     }
+        //     catch
+        //     {
+        //         // corrupt/old cache format -> rebuild cache
+        //         return false;
+        //     }
+        // }
 
         public void SplitLog(int pieces = 0)
         {
