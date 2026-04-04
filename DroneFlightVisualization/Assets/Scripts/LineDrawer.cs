@@ -1,20 +1,50 @@
 using UnityEngine;
 using Vector3 = UnityEngine.Vector3;
 using SVector3 = System.Numerics.Vector3;
+using Quaternion = UnityEngine.Quaternion;
+using SQuaternion = System.Numerics.Quaternion;
 using Debug = UnityEngine.Debug;
+using System.Numerics;
+using UnityEngine.UI;
+using TMPro;
+using SFB;
 
 public class LineDrawer : MonoBehaviour
 {
     public Gradient gradient;
     public LineRenderer lineRenderer;
     public Transform Target;
+    public Slider TimeSlider;
+    public TextMeshProUGUI PauseButtonText;
+    public Transform StatsPanel;
+
+    public bool IsPlaying = false;
+    public float TimeScale = 1f;
     
     KinematicPoint[] kinematicPoints;
 
-    void Load(string filePath)
+    public void Load(string filePath)
     {
-        // TODO: додати вибір файлу через діалогове вікно, а не хардкодити шлях до файлу
         kinematicPoints = KinematicDataProcessor.GetKinematicPointsFromBinaryFile(filePath);
+        DrawColoredTrajectory(kinematicPoints);
+        DrawLine();
+        var flightStats = new FlightStats(kinematicPoints);
+
+        StatsPanel.GetChild(1).GetComponent<TextMeshProUGUI>().text = $"Макс. швидкість: {flightStats.MaxVelocity:F2} м/с";
+        StatsPanel.GetChild(2).GetComponent<TextMeshProUGUI>().text = $"Макс. прискорення: {flightStats.MaxAcceleration:F2} м/с²";
+        StatsPanel.GetChild(3).GetComponent<TextMeshProUGUI>().text = $"Макс. швидкість підйому: {flightStats.MaxClimbRate:F2} м/с";
+        StatsPanel.GetChild(4).GetComponent<TextMeshProUGUI>().text = $"Тривалість польоту: {flightStats.FlightDuration:F2} с";
+    }
+
+    public void LoadFile()
+    {
+        var paths = StandaloneFileBrowser.OpenFilePanel("Оберіть файл", "", "", false);
+
+        if (paths.Length > 0 && !string.IsNullOrEmpty(paths[0]))
+        {
+            string selectedFilePath = paths[0];
+            Load(selectedFilePath);
+        }
     }
 
     void DrawLine()
@@ -102,19 +132,58 @@ public class LineDrawer : MonoBehaviour
         var point = Mathf.Lerp(0, kinematicPoints.Length - 1, value);
 
         Target.position = ConvertToUnityVector(kinematicPoints[(int)point].Position);
+        Target.GetChild(0).transform.rotation = ConvertToUnityQuaternion(kinematicPoints[(int)point].Rotation);
     }
 
-    void Start()
+    public void ChangePlayState()
     {
-        Load("/home/maxym/Документи/BestHackathon/Code/ParserTest/ParserTest/tmp/00000001.BIN");
-        // Load("/home/maxym/Документи/BestHackathon/Code/ParserTest/ParserTest/tmp/00000019.BIN");
-        DrawColoredTrajectory(kinematicPoints);
-        DrawLine();
+        IsPlaying = !IsPlaying;
+        PauseButtonText.text = IsPlaying ? "||" : ">";
+    }
+
+    public void SetTimeScale(int value)
+    {
+        switch (value)
+        {
+            case 0:
+                TimeScale = -1f;
+                break;
+            case 1:
+                TimeScale = 1f;
+                break;
+            case 2:
+                TimeScale = 2f;
+                break; 
+            case 3:
+                TimeScale = 4f;
+                break; 
+            case 4:
+                TimeScale = 8f;
+                break; 
+            default:
+                TimeScale = 1f;
+                break;
+        }
+    }
+
+    void Update()
+    {
+        if (!IsPlaying) return;
+        var value = TimeSlider.value + Time.deltaTime / kinematicPoints.Length * 100f * TimeScale;
+        value = Mathf.Clamp(value, 0f, 1f);
+        TimeSlider.value = value;
+        SetTime(value);
     }
 
     Vector3 ConvertToUnityVector(SVector3 vector)
     {
         // Конвертуємо вектор з System.Numerics.Vector3 у UnityEngine.Vector3
         return new Vector3(vector.X, vector.Z, vector.Y);
+    }
+
+    Quaternion ConvertToUnityQuaternion(SQuaternion quaternion)
+    {
+        // Конвертуємо кватерніон з System.Numerics.Quaternion у UnityEngine.Quaternion
+        return new Quaternion(quaternion.X, quaternion.Y, quaternion.Z, quaternion.W);
     }
 }

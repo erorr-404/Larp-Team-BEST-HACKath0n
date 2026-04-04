@@ -25,6 +25,9 @@ public struct KinematicPoint
     /// <summary> Висота над рівнем моря, метри </summary>
     public  float Altitude;
 
+    /// <summary> Швидкісь набору всисоти, метри на секунду </summary>
+    public float ClimbRate;
+
     // дані, отримані в результаті конвертації gps координат у декартові координати відносно стартової точки
 
     /// <summary> Позиція у Декартових координатах (ENU), метри </summary>

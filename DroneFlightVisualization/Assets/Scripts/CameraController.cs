@@ -22,13 +22,13 @@ public class CameraController : MonoBehaviour
         UpdatePos();
     }
 
-    void Update()
+    void LateUpdate()
     {
         var scroll = -Input.mouseScrollDelta.y;
 
         if (scroll != 0)
         {
-            zoom = Mathf.Clamp(zoom + scroll * Sensitivity, 2, 100);
+            zoom = Mathf.Clamp(zoom + scroll * Sensitivity, 1, 200);
         }
 
         if (Input.GetMouseButton(1))

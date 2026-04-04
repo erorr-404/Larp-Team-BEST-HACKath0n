@@ -239,6 +239,11 @@ public class KinematicCalculator
         return new PositionRecord(time, interpolated, interpolatedLongitude, interpolatedLatitude, interpolatedAltitude);
     }
 
+    // private BaroRecord GetClosestBaroRecord(BaroRecord[] baroRecords, double time)
+    // {
+        
+    // }
+
 
     /// <summary>
     /// Обчислює масив із координатами відносно стартової точки на основі gps записів.
