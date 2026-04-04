@@ -14,6 +14,8 @@ public class KinematicCalculator
     // створений для того, щоб один раз конвертувати всі записи gps у вектори
     // а оскільки gps оновлюється рідше, ніж imu будем брати середнє значення
     // між двома точками для більної плавності
+
+
     private PositionRecord[] _positionRecords = Array.Empty<PositionRecord>();
 
     /// <summary>
@@ -24,16 +26,24 @@ public class KinematicCalculator
     /// <param name="baroRecords"> Масив записів BARO </param>
     public void CalculateKinematicPointsFromRecords(GpsRecord[] gpsRecords, ImuRecord[] imuRecords, BaroRecord[] baroRecords)
     {
+
         // використовуємо дані з IMU, оскільки вони мають майбільшу частоту запису
         double startTime = imuRecords[0].time; // обираємо початкове значення кроку (момент початку запису)
         double endTime = imuRecords[imuRecords.Length - 1].time; // обираємо кінцеве значення часу (момент завершення запису)
-        double timeStep = imuRecords[1].time - imuRecords[0].time; // обираємо крок ітерування
+        double timeStep = (imuRecords[imuRecords.Length - 1].time - imuRecords[0].time) / (imuRecords.Length - 1); // обираємо крок ітерування
+        double timeStepSeconds = timeStep / 1_000_000;
 
+        int capacity = (int)((endTime - startTime) / timeStep);
+
+        System.Console.WriteLine(capacity);
+        List<KinematicPoint> kinematicPointsList = new(capacity);
         // обчислюємо масив із координатами відносно стартової точки
         CalculatePositionRecords(gpsRecords);
-
-        PositionRecord currentPosition;
-        ImuRecord currentImu;
+        
+        Vector3d velocityPrev = new(0, 0, 0);
+        Vector3d accPrev = new(0, 0, 0);
+        Vector3d angularVelocityPrev = new(0, 0, 0);
+        
 
         // Шо тут робиться:
         // ми ітеруємось через часові мітки, із imu записів
@@ -45,12 +55,41 @@ public class KinematicCalculator
         // ми беремо саме з IMU
         for (double time = startTime; time <= endTime; time += timeStep)
         {
-            currentPosition = GetClosestPositionRecord(time); // отримуємо найближче значення
-            currentImu = GetClosestImuRecord(imuRecords, time); // отримуємо найближчий запис IMU
-            // TODO: float linearSpeed = ...;
+            PositionRecord currentPosition = GetClosestPositionRecord(time); // отримуємо найближче значення
+            ImuRecord currentImu = GetClosestImuRecord(imuRecords, time); // отримуємо найближчий запис IMU
 
+            // FIXME: тут потрібно врахувати дані з барометра, щоб коректно обчислювати висоту та вертикальну швидкість
+            // FIXME: також потрібно врахувати гравітацію, щоб коректно обчислювати прискорення
 
+            Vector3d accI = new Vector3d(currentImu.accX, currentImu.accY, currentImu.accZ);
+            Vector3d velocityI = velocityPrev + ((accI + accPrev) / 2) * (timeStepSeconds);
+
+            Vector3d angularVelocity = new Vector3d(currentImu.gyrX, currentImu.gyrY, currentImu.gyrZ);
+            Vector3d angularPosition = angularVelocityPrev + ((angularVelocity + angularVelocityPrev) / 2) * (timeStepSeconds);
+
+            KinematicPoint currentKinematicPoint = new();
+            currentKinematicPoint.Timestamp = time;
+            currentKinematicPoint.Longitude = currentPosition.Longitude;
+            currentKinematicPoint.Latitude = currentPosition.Latitude;
+            currentKinematicPoint.Altitude = currentPosition.Altitude;
+            currentKinematicPoint.Position = currentPosition.Position;
+            currentKinematicPoint.Speed = velocityI.ToVector3();
+            currentKinematicPoint.Acceleration = accI.ToVector3();
+            currentKinematicPoint.Rotation = new Quaternion(angularPosition.ToVector3(), 0);
+            currentKinematicPoint.angularSpeed = angularVelocity.ToVector3();
+
+            kinematicPointsList.Add(currentKinematicPoint);
+
+            // замінюємо попереднє значення на поточне для наступної ітерації
+            accPrev = accI;
+            velocityPrev = velocityI;
+            angularVelocityPrev = angularVelocity;
         }
+
+        // після обчислення всіх кінематичних точок скидаємо курсори
+        _imuRecordsCursor = 0;
+        _positionCursor = 0;
+        kinematicPoints = kinematicPointsList.ToArray();
     }
 
     private int _imuRecordsCursor = 0; // курсор для швидкого послідовного доступу

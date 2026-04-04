@@ -14,6 +14,39 @@ public struct Vector3d
         this.y = y;
         this.z = z;
     }
+
+    public static Vector3d operator +(Vector3d v1, Vector3d v2)
+    {
+        return new Vector3d(v1.x + v2.x, v1.y + v2.y, v1.z + v2.z);
+    }
+
+    public static Vector3d operator -(Vector3d v1, Vector3d v2)
+    {
+        return new Vector3d(v1.x - v2.x, v1.y - v2.y, v1.z - v2.z);
+    }
+
+    public static Vector3d operator *(Vector3d v, double scalar)
+    {
+        return new Vector3d(v.x * scalar, v.y * scalar, v.z * scalar);
+    }
+
+    public static Vector3d operator *(double scalar, Vector3d v)
+    {
+        return new Vector3d(v.x * scalar, v.y * scalar, v.z * scalar);
+    }
+
+    public static Vector3d operator /(Vector3d v, double scalar)
+    {
+        if (scalar == 0.0)
+            throw new DivideByZeroException("Cannot divide Vector3d by zero.");
+
+        return new Vector3d(v.x / scalar, v.y / scalar, v.z / scalar);
+    }
+
+    public Vector3 ToVector3()
+    {
+        return new Vector3((float)x, (float)y, (float)z);
+    }
 }
 public static class Utils
 {   

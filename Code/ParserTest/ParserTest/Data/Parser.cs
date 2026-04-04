@@ -175,4 +175,12 @@ public class BinaryParser(string fileName)
             press,
             crt);
     }
+
+    public void Dispose()
+    {
+        // очищуємо масиви з результатами, щоб звільнити пам'ять
+        GpsRecords = Array.Empty<GpsRecord>();
+        ImuRecords = Array.Empty<ImuRecord>();
+        BaroRecords = Array.Empty<BaroRecord>();
+    }
 }
