@@ -63,4 +63,6 @@
 
 **Найлегший варіант**: запустити вже скомпільовану програму для [Linux](./Release/Linux.zip) або [Windows](./Release/Windows.zip). Білди знаходяться у папці Release.
 
+**Веб-варіант**: також у нас є версія для браузера за посиланням [https://andenl.itch.io/droneflightvisualization](https://andenl.itch.io/droneflightvisualization). Не потребує заватаження.
+
 Або можна завантажити код, та Unity, скомпілювати проєкт.
