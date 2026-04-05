@@ -12,7 +12,7 @@ public struct KinematicPoint
     public  double Timestamp;
 
     /// <summary> Повертає час у секундах </summary>
-    public double GetTimeInSecods => Timestamp / 1000000;
+    public double GetTimeInSecods => Timestamp / 1000.0;
 
     // оригінальні дані gps
 

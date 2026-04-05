@@ -20,9 +20,7 @@ class FlightStats
         MaxVelocity = 0f;
         MaxAcceleration = 0f;
         MaxClimbRate = 0f;
-        FlightDuration = flightData[^1].Timestamp - flightData[0].Timestamp; // в секундах
-
-        float prevAlt = flightData[0].Altitude;
+        FlightDuration = (flightData[^1].Timestamp - flightData[0].Timestamp) / 1000.0 / 60; // в хвилинах
 
         foreach (KinematicPoint kinematicPoint in flightData)
         {   
@@ -34,8 +32,8 @@ class FlightStats
             float accelerationMag = kinematicPoint.GetAccelerationMagnitude;
             if (accelerationMag > MaxAcceleration) MaxAcceleration = accelerationMag;
 
-            float altDelta = Mathf.Abs(prevAlt - kinematicPoint.Altitude);
-            if (altDelta > MaxClimbRate) MaxClimbRate = altDelta;
+            float climbRate = kinematicPoint.ClimbRate;
+            if (climbRate > MaxClimbRate) MaxClimbRate = climbRate;
         }
     }
 }

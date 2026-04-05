@@ -41,6 +41,8 @@ public class BinaryParser
         var imu = new List<ImuRecord>();
         var baro = new List<BaroRecord>();
 
+        int baroIndex = 1;
+
         // ітеруємся через сирі дані
         foreach (DFItem item in logdata.GetEnumeratorTypeAll())
         {
@@ -71,6 +73,7 @@ public class BinaryParser
                     {
                         baro.Add(baroRecord.Value);
                     }
+                    baroIndex++;
                     break;
                 
                 // всі інші дані відкидаємо
@@ -112,7 +115,7 @@ public class BinaryParser
             return null;
 
         return new GpsRecord(
-            (double)item.timems,
+            item.timems, // час мав би бути double, а не float
             lat,
             lng,
             alt,
@@ -147,7 +150,7 @@ public class BinaryParser
             return null;
 
         return new ImuRecord(
-            (float)item.timems,
+            item.timems, // якого біса тут був float??
             gyrX,
             gyrY,
             gyrZ,
@@ -163,6 +166,7 @@ public class BinaryParser
     /// <param name="item"> Елемент даних для конвертації </param>
     /// <returns> Об'єкт BaroRecord, якщо конвертація успішна, інакше null </returns>
     private static BaroRecord? TryMapBaro(DFItem item)
+    // FIXME: брати дані лише з одного барометра
     {
         if (!float.TryParse(item["Alt"], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var alt))
             return null;
@@ -175,13 +179,17 @@ public class BinaryParser
 
         if (!float.TryParse(item["CRt"], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var crt))
             return null;
+        
+        if (!int.TryParse(item["I"], System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var baroIndex))
+            return null;
 
         return new BaroRecord(
-            (float)item.timems,
+            item.timems, // якого дідька тут теж???
             alt,
             temp,
             press,
-            crt);
+            crt,
+            baroIndex);
     }
 
     public void Dispose()

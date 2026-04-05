@@ -82,13 +82,16 @@ public readonly struct BaroRecord
     public readonly float press; // атмосферний тиск, hPa
     public readonly float crt; // climb rate, швидкість набору висоти, m/s
 
-    public BaroRecord(double time, float alt, float temp, float press, float crt)
+    public readonly int baroIndex;
+
+    public BaroRecord(double time, float alt, float temp, float press, float crt, int baroIndex)
     {
         this.time = time;
         this.alt = alt;
         this.temp = temp;
         this.press = press;
         this.crt = crt;
+        this.baroIndex = baroIndex;
     }
 
     public override string ToString()

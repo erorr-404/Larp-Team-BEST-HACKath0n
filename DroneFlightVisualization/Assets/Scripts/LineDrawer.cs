@@ -17,6 +17,7 @@ public class LineDrawer : MonoBehaviour
     public Slider TimeSlider;
     public TextMeshProUGUI PauseButtonText;
     public Transform StatsPanel;
+    public RealTimeStats RealTimeStatsDisplay;
 
     public bool IsPlaying = false;
     public float TimeScale = 1f;
@@ -27,13 +28,12 @@ public class LineDrawer : MonoBehaviour
     {
         kinematicPoints = KinematicDataProcessor.GetKinematicPointsFromBinaryFile(filePath);
         DrawColoredTrajectory(kinematicPoints);
-        DrawLine();
         var flightStats = new FlightStats(kinematicPoints);
 
         StatsPanel.GetChild(1).GetComponent<TextMeshProUGUI>().text = $"Макс. швидкість: {flightStats.MaxVelocity:F2} м/с";
         StatsPanel.GetChild(2).GetComponent<TextMeshProUGUI>().text = $"Макс. прискорення: {flightStats.MaxAcceleration:F2} м/с²";
         StatsPanel.GetChild(3).GetComponent<TextMeshProUGUI>().text = $"Макс. швидкість підйому: {flightStats.MaxClimbRate:F2} м/с";
-        StatsPanel.GetChild(4).GetComponent<TextMeshProUGUI>().text = $"Тривалість польоту: {flightStats.FlightDuration:F2} с";
+        StatsPanel.GetChild(4).GetComponent<TextMeshProUGUI>().text = $"Тривалість польоту: {flightStats.FlightDuration:F2} хв";
     }
 
     public void LoadFile()
@@ -87,19 +87,12 @@ public class LineDrawer : MonoBehaviour
         
         for (int i = 0; i < pointCount; i++)
         {
-            // Використовуємо вашу властивість для отримання модуля швидкості
             float currentSpeed = flightData[i].GetSpeedMagnitude;
             
             if (currentSpeed > maxSpeed)
                 maxSpeed = currentSpeed;
                 
-            // КРИТИЧНИЙ МОМЕНТ: Конвертація System.Numerics.Vector3 у UnityEngine.Vector3
-            // Звертаємося до X, Y, Z (у System.Numerics вони з великої літери)
-            positions[i] = new UnityEngine.Vector3(
-                flightData[i].Position.X, 
-                flightData[i].Position.Y, 
-                flightData[i].Position.Z
-            );
+            positions[i] = ConvertToUnityVector(flightData[i].Position);
         }
         
         // Передаємо конвертовані позиції в лінію
@@ -133,6 +126,8 @@ public class LineDrawer : MonoBehaviour
 
         Target.position = ConvertToUnityVector(kinematicPoints[(int)point].Position);
         Target.GetChild(0).transform.rotation = ConvertToUnityQuaternion(kinematicPoints[(int)point].Rotation);
+
+        RealTimeStatsDisplay.UpdateRealTimeStats(kinematicPoints[(int)point]);
     }
 
     public void ChangePlayState()

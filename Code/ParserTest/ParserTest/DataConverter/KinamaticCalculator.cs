@@ -4,12 +4,15 @@ using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Collections.Generic;
 using System;
+using System.Collections.Concurrent;
 
 /// <summary>
 /// Клас для конвертації gps, imu та baro записів у масив kinematicPoints, який містить координати, швидкість та прискорення відносно стартової точки.
 /// </summary>
 public class KinematicCalculator
 {
+    const float Gravity = 9.80665f;
+
     public KinematicPoint[] kinematicPoints = Array.Empty<KinematicPoint>();
 
     // це масив із координатами відносно стартової точки
@@ -33,19 +36,26 @@ public class KinematicCalculator
         double startTime = imuRecords[0].time; // обираємо початкове значення кроку (момент початку запису)
         double endTime = imuRecords[imuRecords.Length - 1].time; // обираємо кінцеве значення часу (момент завершення запису)
         double timeStep = (imuRecords[imuRecords.Length - 1].time - imuRecords[0].time) / (imuRecords.Length - 1); // обираємо крок ітерування
-        double timeStepSeconds = timeStep / 1_000_000;
+        double timeStepSeconds = timeStep / 1000.0;
 
         int capacity = (int)((endTime - startTime) / timeStep);
 
-        System.Console.WriteLine(capacity);
+        // System.Console.WriteLine(capacity);
         List<KinematicPoint> kinematicPointsList = new List<KinematicPoint>(capacity);
         // обчислюємо масив із координатами відносно стартової точки
         CalculatePositionRecords(gpsRecords);
         
+        // для інтегрування
         Vector3d velocityPrev = new Vector3d(0, 0, 0);
         Vector3d accPrev = new Vector3d(0, 0, 0);
         Vector3d angularVelocityPrev = new Vector3d(0, 0, 0);
         
+        // барометр
+        BaroRecord startBaro = GetClosestBaroRecord(baroRecords, startTime);
+        float baroAlt0 = startBaro.alt;
+        float absoluteAlt0 = GetClosestPositionRecord(startTime).Altitude;
+
+        Quaternion attitude = Quaternion.Identity;
 
         // Шо тут робиться:
         // ми ітеруємось через часові мітки, із imu записів
@@ -59,26 +69,51 @@ public class KinematicCalculator
         {
             PositionRecord currentPosition = GetClosestPositionRecord(time); // отримуємо найближче значення
             ImuRecord currentImu = GetClosestImuRecord(imuRecords, time); // отримуємо найближчий запис IMU
+            
+            Vector3 omegaBody = new Vector3(currentImu.gyrX, currentImu.gyrY, currentImu.gyrZ);
+            attitude = IntegrateGyro(attitude, omegaBody, (float)timeStepSeconds);
 
-            // FIXME: тут потрібно врахувати дані з барометра, щоб коректно обчислювати висоту та вертикальну швидкість
+            // 1) сире прискорення в body frame
+            Vector3 accBody = new Vector3(currentImu.accX, currentImu.accY, currentImu.accZ);
+
+            // 2) в ENU
+            Vector3 accEnu = Vector3.Transform(accBody, attitude);
+
+            // 3) компенсація гравітації (Up = +Z в ENU)
+            Vector3 accLinearEnu = accEnu + new Vector3(0f, 0f, Gravity);
+
             // FIXME: також потрібно врахувати гравітацію, щоб коректно обчислювати прискорення
 
-            Vector3d accI = new Vector3d(currentImu.accX, currentImu.accY, currentImu.accZ);
-            Vector3d velocityI = velocityPrev + ((accI + accPrev) / 2) * (timeStepSeconds);
+            // Якщо побачим, що на стоянці Z виходить ~+19.6 або ~-19.6, зміни знак на мінус:
+            // Vector3 accLinearEnu = accEnu - new Vector3(0f, 0f, Gravity);
+
+            Vector3d accI = new Vector3d(accLinearEnu.X, accLinearEnu.Y, accLinearEnu.Z);
+            Vector3d velocityI = velocityPrev + ((accI + accPrev) / 2.0) * timeStepSeconds;
 
             Vector3d angularVelocity = new Vector3d(currentImu.gyrX, currentImu.gyrY, currentImu.gyrZ);
             Vector3d angularPosition = angularVelocityPrev + ((angularVelocity + angularVelocityPrev) / 2) * (timeStepSeconds);
 
+            BaroRecord currentBaro = GetClosestBaroRecord(baroRecords, time);
+            float deltaAlt = currentBaro.alt - baroAlt0;
+            float altitude = absoluteAlt0 + deltaAlt;
+
+            Vector3 pos = currentPosition.Position;
+            pos.Z = deltaAlt;
+
+            Vector3 vel = velocityI.ToVector3();
+            vel.Z = currentBaro.crt;
+            
             KinematicPoint currentKinematicPoint = new KinematicPoint();
-            currentKinematicPoint.Timestamp = time;
+            currentKinematicPoint.Timestamp = time - startTime;
             currentKinematicPoint.Longitude = currentPosition.Longitude;
             currentKinematicPoint.Latitude = currentPosition.Latitude;
-            currentKinematicPoint.Altitude = currentPosition.Altitude;
-            currentKinematicPoint.Position = currentPosition.Position;
-            currentKinematicPoint.Speed = velocityI.ToVector3();
+            currentKinematicPoint.Altitude = altitude;
+            currentKinematicPoint.Position = pos;
+            currentKinematicPoint.Speed = vel;
             currentKinematicPoint.Acceleration = accI.ToVector3();
             currentKinematicPoint.Rotation = new Quaternion(angularPosition.ToVector3(), 0);
             currentKinematicPoint.angularSpeed = angularVelocity.ToVector3();
+            currentKinematicPoint.ClimbRate = currentBaro.crt;
 
             kinematicPointsList.Add(currentKinematicPoint);
 
@@ -91,6 +126,7 @@ public class KinematicCalculator
         // після обчислення всіх кінематичних точок скидаємо курсори
         _imuRecordsCursor = 0;
         _positionCursor = 0;
+        _baroRecordsCursor = 0;
         kinematicPoints = kinematicPointsList.ToArray();
     }
 
@@ -102,7 +138,6 @@ public class KinematicCalculator
     /// <returns> Запис IMU, який найближче до заданого часу </returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private ImuRecord GetClosestImuRecord(ImuRecord[] imuRecords, double time) 
-    // TODO: перевірити чи [MethodImpl(MethodImplOptions.AggressiveInlining)] дійсно це прискорює виконання функції
     {
         int len = imuRecords.Length;
 
@@ -157,6 +192,29 @@ public class KinematicCalculator
         return imuRecords[nearest];
     }
 
+    /// <summary>
+    /// Інтегрування повороту.
+    /// </summary>
+    /// <param name="q"></param>
+    /// <param name="omegaRadPerSec"></param>
+    /// <param name="dtSec"></param>
+    /// <returns></returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static Quaternion IntegrateGyro(Quaternion q, Vector3 omegaRadPerSec, float dtSec)
+    {
+        Quaternion omegaQ = new Quaternion(omegaRadPerSec, 0f);
+        Quaternion qDot = Quaternion.Multiply(q, omegaQ);
+
+        q = new Quaternion(
+            q.X + 0.5f * qDot.X * dtSec,
+            q.Y + 0.5f * qDot.Y * dtSec,
+            q.Z + 0.5f * qDot.Z * dtSec,
+            q.W + 0.5f * qDot.W * dtSec
+        );
+
+        return Quaternion.Normalize(q);
+    }
+
     private int _positionCursor; // курсор для швидкого послідовного доступу
     
     /// <summary>
@@ -166,7 +224,6 @@ public class KinematicCalculator
     /// <returns> Позиція у вигляді PositionRecord, яка відповідає заданому часу </returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private PositionRecord GetClosestPositionRecord(double time)
-    // TODO: перевірити чи [MethodImpl(MethodImplOptions.AggressiveInlining)] дійсно це прискорює виконання функції
     {
         var records = _positionRecords;
         int len = records.Length;
@@ -237,12 +294,90 @@ public class KinematicCalculator
         float interpolatedAltitude = a.Altitude + (b.Altitude - a.Altitude) * t;
 
         return new PositionRecord(time, interpolated, interpolatedLongitude, interpolatedLatitude, interpolatedAltitude);
-    }
+        }
 
-    // private BaroRecord GetClosestBaroRecord(BaroRecord[] baroRecords, double time)
-    // {
-        
-    // }
+
+    private int _baroRecordsCursor = 0; // курсор для швидкого послідовного доступу
+
+    /// <summary>
+    /// Вираховує найближчі до даної мітки часу дані барометра, використовуючи лінійну інтерполяцію.
+    /// </summary>
+    /// <param name="baroRecords"> Масив із записами з барометра. </param>
+    /// <param name="time"> Мітка часу у мікросекунда від початку запису. </param>
+    /// <returns> Новий запис BaroRecord з інтерпольованими даними. </returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private BaroRecord GetClosestBaroRecord(BaroRecord[] baroRecords, double time)
+    {
+        int len = baroRecords.Length;
+
+        if (len == 0) return default;
+        if (len == 1) return baroRecords[0];
+
+        int last = len - 1;
+
+        // Граничні випадки
+        if (time <= baroRecords[0].time)
+        {
+            _baroRecordsCursor = 0;
+            return baroRecords[0];
+        }
+
+        if (time >= baroRecords[last].time)
+        {
+            _baroRecordsCursor = last - 1;
+            return baroRecords[last];
+        }
+
+        int i = _baroRecordsCursor;
+        if ((uint)i >= (uint)last)
+            i = 0;
+
+        // Fast-path: час зростає, рухаємося тільки вперед
+        if (time >= baroRecords[i].time)
+        {
+            while (i + 1 < len && baroRecords[i + 1].time < time)
+                i++;
+        }
+        else
+        {
+            // Fallback: якщо time пішов назад, шукаємо інтервал бінарним пошуком
+            int lo = 0;
+            int hi = last;
+
+            while (lo + 1 < hi)
+            {
+                int mid = lo + ((hi - lo) >> 1);
+                if (baroRecords[mid].time <= time)
+                    lo = mid;
+                else
+                    hi = mid;
+            }
+
+            i = lo;
+        }
+
+        _baroRecordsCursor = i;
+
+        ref readonly var a = ref baroRecords[i];
+        ref readonly var b = ref baroRecords[i + 1];
+
+        double dt = b.time - a.time;
+        if (dt <= 1e-12)
+            return a; // захист від дубльованих timestamp
+
+        float t = (float)((time - a.time) / dt);
+
+        if (t <= 0f) return a;
+        if (t >= 1f) return b;
+
+        float alt = a.alt + (b.alt - a.alt) * t;
+        float temp = a.temp + (b.temp - a.temp) * t;
+        float press = a.press + (b.press - a.press) * t;
+        float crt = a.crt + (b.crt - a.crt) * t;
+
+        // порядок параметрів: (time, alt, temp, press, crt)
+        return new BaroRecord(time, alt, temp, press, crt, a.baroIndex);
+    }
 
 
     /// <summary>
@@ -268,7 +403,7 @@ public class KinematicCalculator
         {
             currentLat = record.lat;
             currentLng = record.lng;
-            currentAlt = record.alt; // FIXME: брати висоту не від gps, а від барометра
+            currentAlt = record.alt;
 
             currentEcef = Utils.LlaToEcef(currentLat, currentLng, (double)currentAlt);
             localPos = Utils.EcefToEnu(currentEcef, startEcef, startLat, startLng);
@@ -281,7 +416,7 @@ public class KinematicCalculator
 
 
     /// <summary>
-    /// Структура для зберігання запису про позицію з часом та координатами.
+    /// Структура для зберігання запису про позицію з часом та координатами. Бере дані виключно із GPS, тому перед передачою даних далі висоту треба замінити на дані із барометра.
     /// </summary>
     /// <param name="timestamp"> Час запису </param>
     /// <param name="pos"> Координати позиції </param>
