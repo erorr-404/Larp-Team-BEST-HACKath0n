@@ -54,6 +54,8 @@ public class LineDrawer : MonoBehaviour
             map.SetCenterLatitudeLongitude(mapPos);
             map.UpdateMap(mapPos);
 
+            // map.transform.position = map.transform.position + new Vector3(0, 0, 100);
+
             SetTime(0f);
         }
         catch (System.ArgumentException ex)
@@ -158,7 +160,7 @@ public class LineDrawer : MonoBehaviour
         if (kinematicPoints == null) return;
         var point = Mathf.Lerp(0, kinematicPoints.Length - 1, value);
 
-        Target.localPosition = ConvertToUnityVector(kinematicPoints[(int)point].Position);
+        Target.localPosition = ConvertToUnityVector(kinematicPoints[(int)point].Position); // чомусь на 100м відрізняється від правильної
         Target.GetChild(0).transform.rotation = ConvertToUnityQuaternion(kinematicPoints[(int)point].Rotation);
 
         RealTimeStatsDisplay.UpdateRealTimeStats(kinematicPoints[(int)point]);
