@@ -1,26 +1,31 @@
-// TODO: незабути про компенсацію гравітації в IMU
-
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Collections.Generic;
 using System;
-using System.Collections.Concurrent;
 
 /// <summary>
 /// Клас для конвертації gps, imu та baro записів у масив kinematicPoints, який містить координати, швидкість та прискорення відносно стартової точки.
 /// </summary>
 public class KinematicCalculator
 {
+
+    public KinematicCalculator(int nsatsThreshold)
+    {
+        minNSats = nsatsThreshold;
+    }
+
+
     const float Gravity = 9.80665f;
+    readonly int minNSats; // мінімальна кількість супутників для прийняття даних GPS
 
     public KinematicPoint[] kinematicPoints = Array.Empty<KinematicPoint>();
 
-    // це масив із координатами відносно стартової точки
-    // створений для того, щоб один раз конвертувати всі записи gps у вектори
-    // а оскільки gps оновлюється рідше, ніж imu будем брати середнє значення
-    // між двома точками для більної плавності
-
-
+    /// <summary>
+    /// це масив із координатами відносно стартової точки
+    /// створений для того, щоб один раз конвертувати всі записи gps у вектори
+    /// а оскільки gps оновлюється рідше, ніж imu будем інтерполювати значення
+    /// між двома точками для більної плавності
+    /// </summary>
     private PositionRecord[] _positionRecords = Array.Empty<PositionRecord>();
 
     /// <summary>
@@ -29,13 +34,13 @@ public class KinematicCalculator
     /// <param name="gpsRecords"> Масив записів GPS </param>
     /// <param name="imuRecords"> Масив записів IMU </param>
     /// <param name="baroRecords"> Масив записів BARO </param>
-    public void CalculateKinematicPointsFromRecords(GpsRecord[] gpsRecords, ImuRecord[] imuRecords, BaroRecord[] baroRecords)
+    public void CalculateKinematicPointsFromRecords(GpsRecord[] gpsRecords, ImuRecord[] imuRecords, BaroRecord[] baroRecords, Action<String> debugLog)
     {
 
         // використовуємо дані з IMU, оскільки вони мають майбільшу частоту запису
-        double startTime = imuRecords[0].time; // обираємо початкове значення кроку (момент початку запису)
-        double endTime = imuRecords[imuRecords.Length - 1].time; // обираємо кінцеве значення часу (момент завершення запису)
-        double timeStep = (imuRecords[imuRecords.Length - 1].time - imuRecords[0].time) / (imuRecords.Length - 1); // обираємо крок ітерування
+        double startTime = Math.Max(Math.Max(gpsRecords[0].time, imuRecords[0].time), baroRecords[0].time);// обираємо початкове значення кроку (момент, коли всі датчики вже почали записувати дані)
+        double endTime =  gpsRecords[^1].time; // обираємо кінцеве значення часу (момент, коли перший з датчиків перестав записувати дані)
+        double timeStep = (endTime - startTime) / (imuRecords.Length - 1); // обираємо крок ітерування
         double timeStepSeconds = timeStep / 1000.0;
 
         int capacity = (int)((endTime - startTime) / timeStep);
@@ -65,9 +70,14 @@ public class KinematicCalculator
         // дані з imu беремо найближчі до даної позначки часу із масива imuRecords
         // найімовірніше це будуть прямо точні дані, бо початок, кінець та крок часових позначок
         // ми беремо саме з IMU
+        debugLog($"Start time: {startTime}, endTime: {endTime}, timeStep: {timeStep}, expected points count: {capacity}");
         for (double time = startTime; time <= endTime; time += timeStep)
         {
             PositionRecord currentPosition = GetClosestPositionRecord(time); // отримуємо найближче значення
+            
+            debugLog($"Processing time: {time}, NSats: {currentPosition.NSats}");
+            if (currentPosition.NSats < minNSats) continue; // фільтруємо по кількості супутників, щоб не брати дуже неточні дані
+            
             ImuRecord currentImu = GetClosestImuRecord(imuRecords, time); // отримуємо найближчий запис IMU
             
             Vector3 omegaBody = new Vector3(currentImu.gyrX, currentImu.gyrY, currentImu.gyrZ);
@@ -82,11 +92,6 @@ public class KinematicCalculator
             // 3) компенсація гравітації (Up = +Z в ENU)
             Vector3 accLinearEnu = accEnu + new Vector3(0f, 0f, Gravity);
 
-            // FIXME: також потрібно врахувати гравітацію, щоб коректно обчислювати прискорення
-
-            // Якщо побачим, що на стоянці Z виходить ~+19.6 або ~-19.6, зміни знак на мінус:
-            // Vector3 accLinearEnu = accEnu - new Vector3(0f, 0f, Gravity);
-
             Vector3d accI = new Vector3d(accLinearEnu.X, accLinearEnu.Y, accLinearEnu.Z);
             Vector3d velocityI = velocityPrev + ((accI + accPrev) / 2.0) * timeStepSeconds;
 
@@ -95,10 +100,15 @@ public class KinematicCalculator
 
             BaroRecord currentBaro = GetClosestBaroRecord(baroRecords, time);
             float deltaAlt = currentBaro.alt - baroAlt0;
-            float altitude = absoluteAlt0 + deltaAlt;
+            float baroAltitude = absoluteAlt0 + deltaAlt;
+
+            // 0..1: чим більше супутників, тим більше довіра до GPS
+            float gpsWeight = Math.Clamp((currentPosition.NSats - minNSats) / 6f, 0f, 1f);
+            float baroWeight = 1f - gpsWeight;
+            float fusedAltitude = currentPosition.Altitude * gpsWeight + baroAltitude * baroWeight;
 
             Vector3 pos = currentPosition.Position;
-            pos.Z = deltaAlt;
+            pos.Z = fusedAltitude - absoluteAlt0;
 
             Vector3 vel = velocityI.ToVector3();
             vel.Z = currentBaro.crt;
@@ -107,13 +117,14 @@ public class KinematicCalculator
             currentKinematicPoint.Timestamp = time - startTime;
             currentKinematicPoint.Longitude = currentPosition.Longitude;
             currentKinematicPoint.Latitude = currentPosition.Latitude;
-            currentKinematicPoint.Altitude = altitude;
+            currentKinematicPoint.Altitude = fusedAltitude;
             currentKinematicPoint.Position = pos;
             currentKinematicPoint.Speed = vel;
             currentKinematicPoint.Acceleration = accI.ToVector3();
             currentKinematicPoint.Rotation = new Quaternion(angularPosition.ToVector3(), 0);
             currentKinematicPoint.angularSpeed = angularVelocity.ToVector3();
             currentKinematicPoint.ClimbRate = currentBaro.crt;
+            currentKinematicPoint.NSats = currentPosition.NSats;
 
             kinematicPointsList.Add(currentKinematicPoint);
 
@@ -128,6 +139,11 @@ public class KinematicCalculator
         _positionCursor = 0;
         _baroRecordsCursor = 0;
         kinematicPoints = kinematicPointsList.ToArray();
+
+        if (kinematicPoints.Length == 0)
+        {
+            throw new Exception("No kinematic points were calculated. This may be due to insufficient satellite data (NSats < minNStats) or mismatched time ranges between GPS, IMU, and BARO records.");
+        }
     }
 
     private int _imuRecordsCursor = 0; // курсор для швидкого послідовного доступу
@@ -293,7 +309,7 @@ public class KinematicCalculator
         double interpolatedLatitude = a.Latitude + (b.Latitude - a.Latitude) * t;
         float interpolatedAltitude = a.Altitude + (b.Altitude - a.Altitude) * t;
 
-        return new PositionRecord(time, interpolated, interpolatedLongitude, interpolatedLatitude, interpolatedAltitude);
+        return new PositionRecord(time, interpolated, interpolatedLongitude, interpolatedLatitude, interpolatedAltitude, records[i].NSats);
         }
 
 
@@ -408,7 +424,7 @@ public class KinematicCalculator
             currentEcef = Utils.LlaToEcef(currentLat, currentLng, (double)currentAlt);
             localPos = Utils.EcefToEnu(currentEcef, startEcef, startLat, startLng);
 
-            positionRecordsList.Add(new PositionRecord(record.time, localPos, currentLng, currentLat, currentAlt));
+            positionRecordsList.Add(new PositionRecord(record.time, localPos, currentLng, currentLat, currentAlt, record.nstats));
         }
 
         _positionRecords = positionRecordsList.ToArray();
@@ -430,14 +446,16 @@ public class KinematicCalculator
         public readonly double Longitude;
         public readonly double Latitude;
         public readonly float Altitude;
+        public readonly int NSats;
 
-        public PositionRecord(double timestamp, Vector3 pos, double lng, double lat, float alt)
+        public PositionRecord(double timestamp, Vector3 pos, double lng, double lat, float alt, int nSats)
         {
             Timestamp = timestamp;
             Position = pos;
             Longitude = lng;
             Latitude = lat;
             Altitude = alt;
+            NSats = nSats;
         }
     }
 }

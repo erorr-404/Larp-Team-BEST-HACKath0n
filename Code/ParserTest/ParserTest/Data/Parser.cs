@@ -31,7 +31,6 @@ public class BinaryParser
     /// </summary>
     /// <returns> Повертає true, якщо парсинг успішний, інакше false. </returns>
     public bool Parse()
-    // TODO: повертати false у випадку помилки
     {
         // парсимо бінарник
         using DFLogBuffer logdata = new DFLogBuffer(_fileName);
@@ -39,6 +38,7 @@ public class BinaryParser
         // зберігаємо проміжний результат
         var gps = new List<GpsRecord>();
         var imu = new List<ImuRecord>();
+        
         var baro = new List<BaroRecord>();
 
         int baroIndex = 1;
@@ -66,7 +66,7 @@ public class BinaryParser
                     }
                     break;
 
-                // дані baro відправляємо до списку baro
+                // дані baro відправляємо до списків baro
                 case "BARO":
                     BaroRecord? baroRecord = TryMapBaro(item);
                     if (baroRecord.HasValue)
@@ -166,7 +166,6 @@ public class BinaryParser
     /// <param name="item"> Елемент даних для конвертації </param>
     /// <returns> Об'єкт BaroRecord, якщо конвертація успішна, інакше null </returns>
     private static BaroRecord? TryMapBaro(DFItem item)
-    // FIXME: брати дані лише з одного барометра
     {
         if (!float.TryParse(item["Alt"], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var alt))
             return null;
@@ -189,7 +188,7 @@ public class BinaryParser
             temp,
             press,
             crt,
-            baroIndex);
+            baroIndex); // номер барометра, з якого були взяті дані
     }
 
     public void Dispose()

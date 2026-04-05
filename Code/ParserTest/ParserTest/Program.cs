@@ -1,53 +1,30 @@
-﻿using MissionPlanner.Utilities;
+﻿using System;
+using MissionPlanner.Utilities;
 
 public class KinematicDataProcessor
 {
-    // public static void Main()
-    // {
-
-    //     // ❗ Як запускати: dotnet run > tmp/struct.log
-    //     // Файл можна взяти інший, головгне не знищити корисні дані
-
-    //     // string fileName = "/home/maxym/Документи/BestHackathon/Code/ParserTest/ParserTest/tmp/00000001.BIN";
-
-    //     // BinaryParser parser = new(fileName);
-    //     // parser.Parse();
-
-    //     // KinematicCalculator calculator = new();
-    //     // calculator.CalculateKinematicPointsFromRecords(parser.GpsRecords, parser.ImuRecords, parser.BaroRecords);
-
-    //     // foreach (KinematicPoint point in calculator.kinematicPoints)
-    //     // {
-    //     //     Console.WriteLine(point.ToString());
-    //     // }
-
-    //     // Console.WriteLine("--- GPS Records ---");
-    //     // foreach (var item in parser.GpsRecords)
-    //     // {
-    //     //     Console.WriteLine(item.ToString());
-    //     // }
-
-    //     // Console.WriteLine("--- IMU Records ---");
-    //     // foreach (var item in parser.ImuRecords)
-    //     // {
-    //     //     Console.WriteLine(item.ToString());
-    //     // }
-
-    //     // Console.WriteLine("--- BARO Records ---");
-    //     // foreach (var item in parser.BaroRecords)
-    //     // {
-    //     //     Console.WriteLine(item.ToString());
-    //     // }
-    // }
-
-    public static KinematicPoint[] GetKinematicPointsFromBinaryFile(string fileName)
+    /// <summary>
+    /// Отримує масив KinematicPoint з бінарного файлу, використовуючи BinaryParser для парсингу та KinematicCalculator для конвертації даних.
+    /// </summary>
+    /// <param name="fileName"> Шилях до бінарного файлу </param>
+    /// <param name="minNStats"> Мінімальна кількість супутників (NSats) для включення GPS-даних у розрахунок кінематики. Записи з NSats менше цього значення будуть ігноруватися. </param>
+    /// <returns> Масив KinematicPoint, який містить кінематичні дані, обчислені на основі GPS, IMU та BARO записів з бінарного файлу. </returns>
+    /// <exception cref="Exception"> Викидає виключення, якщо виникає помилка під час обробки даних, наприклад, якщо файл не може бути прочитаний або якщо не вдалося обчислити жодної кінематичної точки через недостатню кількість супутників. </exception>
+    public static KinematicPoint[] GetKinematicPointsFromBinaryFile(string fileName, int minNStats, Action<String> debugLog)
     {
-        BinaryParser parser = new BinaryParser(fileName);
-        parser.Parse();
+        try
+        {
+            BinaryParser parser = new BinaryParser(fileName);
+            parser.Parse();
 
-        KinematicCalculator calculator = new KinematicCalculator();
-        calculator.CalculateKinematicPointsFromRecords(parser.GpsRecords, parser.ImuRecords, parser.BaroRecords);
+            KinematicCalculator calculator = new KinematicCalculator(minNStats);
+            calculator.CalculateKinematicPointsFromRecords(parser.GpsRecords, parser.ImuRecords, parser.BaroRecords, debugLog);
 
-        return calculator.kinematicPoints;
+            return calculator.kinematicPoints;
+        }
+        catch (Exception ex)
+        {
+            throw new Exception($"Failed to process kinematic data from file {fileName}: {ex.Message}", ex);
+        }
     }
 }

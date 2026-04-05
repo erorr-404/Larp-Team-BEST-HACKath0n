@@ -8,6 +8,9 @@ using System.Numerics;
 using UnityEngine.UI;
 using TMPro;
 using SFB;
+using Mapbox.Unity.Map;
+using System.IO;
+using System.Text;
 
 public class LineDrawer : MonoBehaviour
 {
@@ -18,22 +21,50 @@ public class LineDrawer : MonoBehaviour
     public TextMeshProUGUI PauseButtonText;
     public Transform StatsPanel;
     public RealTimeStats RealTimeStatsDisplay;
+    public AbstractMap map;
 
     public bool IsPlaying = false;
     public float TimeScale = 1f;
     
     KinematicPoint[] kinematicPoints;
 
+    public int SatsThreshold = 5;
+
     public void Load(string filePath)
     {
-        kinematicPoints = KinematicDataProcessor.GetKinematicPointsFromBinaryFile(filePath);
-        DrawColoredTrajectory(kinematicPoints);
-        var flightStats = new FlightStats(kinematicPoints);
+        try
+        {
+            kinematicPoints = KinematicDataProcessor.GetKinematicPointsFromBinaryFile(filePath, SatsThreshold, (string Message) => { Debug.Log(Message); });
+            DrawColoredTrajectory(kinematicPoints);
 
-        StatsPanel.GetChild(1).GetComponent<TextMeshProUGUI>().text = $"Макс. швидкість: {flightStats.MaxVelocity:F2} м/с";
-        StatsPanel.GetChild(2).GetComponent<TextMeshProUGUI>().text = $"Макс. прискорення: {flightStats.MaxAcceleration:F2} м/с²";
-        StatsPanel.GetChild(3).GetComponent<TextMeshProUGUI>().text = $"Макс. швидкість підйому: {flightStats.MaxClimbRate:F2} м/с";
-        StatsPanel.GetChild(4).GetComponent<TextMeshProUGUI>().text = $"Тривалість польоту: {flightStats.FlightDuration:F2} хв";
+            var flightStats = new FlightStats(kinematicPoints);
+
+            StatsPanel.GetChild(1).GetComponent<TextMeshProUGUI>().text = $"Макс. швидкість: {flightStats.MaxVelocity:F2} м/с";
+            StatsPanel.GetChild(2).GetComponent<TextMeshProUGUI>().text = $"Макс. прискорення: {flightStats.MaxAcceleration:F2} м/с²";
+            StatsPanel.GetChild(3).GetComponent<TextMeshProUGUI>().text = $"Макс. швидкість підйому: {flightStats.MaxClimbRate:F2} м/с";
+            StatsPanel.GetChild(4).GetComponent<TextMeshProUGUI>().text = $"Тривалість польоту: {flightStats.FlightDuration:F2} хв";
+            StatsPanel.GetChild(5).GetComponent<TextMeshProUGUI>().text = $"Дистанція польоту: {flightStats.FlightDistance:F2} м";
+
+            
+            var mapPos = new Mapbox.Utils.Vector2d(kinematicPoints[0].Latitude, kinematicPoints[0].Longitude);
+
+            map.SetCenterLatitudeLongitude(mapPos);
+            // Центруємо карту по координатах точки зльоту
+
+            map.SetCenterLatitudeLongitude(mapPos);
+            map.UpdateMap(mapPos);
+
+            SetTime(0f);
+        }
+        catch (System.ArgumentException ex)
+        {
+            Debug.LogError($"Failed to calculate flight statistics and display trajectory. Maybe flightStats.Length == 0: {ex.Message}");
+            return;
+        } catch (System.Exception ex)
+        {
+            Debug.LogError($"An unexpected error occurred while loading the file: {ex.Message}");
+            return;
+        }
     }
 
     public void LoadFile()
@@ -114,6 +145,8 @@ public class LineDrawer : MonoBehaviour
             Color pointColor = gradient.Evaluate(speedRatio);
 
             colorTexture.SetPixel(i, 0, pointColor);
+
+            Debug.Log($"Time: {flightData[i].GetTimeInSecods} s, NSats: ... Lat: {flightData[i].Latitude}, Lon: {flightData[i].Longitude}, Alt: {flightData[i].Altitude} m, Position: {flightData[i].Position}");
         }
 
         colorTexture.Apply();
@@ -122,9 +155,10 @@ public class LineDrawer : MonoBehaviour
 
     public void SetTime(float value)
     {
+        if (kinematicPoints == null) return;
         var point = Mathf.Lerp(0, kinematicPoints.Length - 1, value);
 
-        Target.position = ConvertToUnityVector(kinematicPoints[(int)point].Position);
+        Target.localPosition = ConvertToUnityVector(kinematicPoints[(int)point].Position);
         Target.GetChild(0).transform.rotation = ConvertToUnityQuaternion(kinematicPoints[(int)point].Rotation);
 
         RealTimeStatsDisplay.UpdateRealTimeStats(kinematicPoints[(int)point]);
@@ -168,6 +202,27 @@ public class LineDrawer : MonoBehaviour
         value = Mathf.Clamp(value, 0f, 1f);
         TimeSlider.value = value;
         SetTime(value);
+    }
+
+    public void SaveToFile()
+    {
+        string path = StandaloneFileBrowser.SaveFilePanel("Save File", "", "", "");
+        if (path.Length == 0) return;
+        SaveKinematicPoints(path);
+    }
+
+
+    public void SaveKinematicPoints(string filePath)
+    {
+        if (kinematicPoints.Length == 0) throw new System.Exception("No Kinemaptic Points to save.");
+
+        var sb = new StringBuilder();
+
+        foreach (KinematicPoint point in kinematicPoints)
+            sb.AppendLine(point.ToString());
+        
+        File.WriteAllText(filePath, sb.ToString());
+        Debug.Log("Saved to: " + filePath);
     }
 
     Vector3 ConvertToUnityVector(SVector3 vector)

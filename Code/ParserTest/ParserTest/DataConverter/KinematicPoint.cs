@@ -62,6 +62,11 @@ public struct KinematicPoint
     /// <summary> Кутова швидкість, рад/с </summary>
     public  Vector3 angularSpeed;
 
+    /// <summary>
+    /// кількість супутників, які використовувалися для отримання GPS-даних
+    /// </summary>
+    public int NSats;
+
 
     public override string ToString()
     {
